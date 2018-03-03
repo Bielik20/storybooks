@@ -4,16 +4,17 @@
   <div class="col s12 m4">
     <div class="card">
       <div class="card-image">
-        <a href="/stories/edit/{{id}}" class="btn-floating halfway-fab red">
-          <i class="fa fa-pencil"></i>
-        </a>
+        {{#if user}}
+          {{{editIcon user.id ../user.id id}}}
+        {{/if}}
       </div>
       <div class="card-content center-align">
         <h5>{{title}}</h5>
         <p class="story-text">{{truncate (stripTags body) 150}}</p>
         <br>
         <div class="chip">
-          <img src="{{user.image}}" alt="Contact Person"> {{user.firstName}} {{user.lastName}}
+          <img src="{{user.image}}" alt="Contact Person"> 
+          <a href="/stories/user/{{user.id}}">{{user.firstName}} {{user.lastName}}</a>
         </div>
       </div>
       <div class="card-action center-align">

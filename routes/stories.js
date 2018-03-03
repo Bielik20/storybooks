@@ -1,20 +1,41 @@
 const express = require('express');
 const router = express.Router();
-const {ensureAuthenticated, ensureGuest} = require('../helpers/auth');
+const { ensureAuthenticated, ensureGuest } = require('../helpers/auth');
 const mongoose = require('mongoose');
 const Story = mongoose.model('stories');
 const User = mongoose.model('users');
 
 // Stories Index
 router.get('/', async (req, res) => {
-  const stories = await Story.find({status: 'public'}).populate('user');
+  const stories = await Story.find({ status: 'public' })
+    .populate('user')
+    .sort({ date: 'desc' });
+  res.render('stories/index', { stories: stories });
+});
+
+// List stories from the user
+router.get('/user/:userId', async (req, res) => {
+  const stories = await Story.find({ user: req.params.userId, status: 'public' })
+    .populate('user');
+  res.render('stories/index', { stories: stories });
+});
+
+// Loged in user stories
+router.get('/my', ensureAuthenticated, async (req, res) => {
+  const stories = await Story.find({ user: req.user.id })
+    .populate('user');
   res.render('stories/index', { stories: stories });
 });
 
 // Show single story
 router.get('/show/:id', async (req, res) => {
-  const story = await Story.findOne({ _id: req.params.id }).populate('user');
-  res.render('stories/show', { story: story });
+  const story = await Story.findOne({ _id: req.params.id })
+    .populate('user')
+    .populate('comments.commentUser');
+  if ((story.status === 'public') || (req.user && req.user.id === story.user._id)) {
+    return res.render('stories/show', { story: story });
+  }
+  res.redirect('/stories');
 });
 
 // Add Story Form
@@ -25,6 +46,9 @@ router.get('/add', ensureAuthenticated, (req, res) => {
 // Edit Story Form
 router.get('/edit/:id', ensureAuthenticated, async (req, res) => {
   const story = await Story.findOne({ _id: req.params.id });
+  if (story.user !== req.user.id) {
+    return res.redirect('/stories');
+  }
   res.render('stories/edit', { story: story });
 });
 
@@ -64,5 +88,19 @@ function mapAllowComments(req) {
     req.body.allowComments = false;
   }
 }
+
+// Add Comment
+router.post('/comment/:id', async (req, res) => {
+  const story = await Story.findOne({ _id: req.params.id });
+  const newComment = {
+    commentBody: req.body.commentBody,
+    commentUser: req.user.id
+  }
+
+  // Add to comments array
+  story.comments.unshift(newComment);
+  await story.save();
+  res.redirect(`/stories/show/${story.id}`);
+});
 
 module.exports = router;
